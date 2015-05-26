@@ -1,4 +1,4 @@
-#!/bin/bash -xv
+#!/bin/bash
 
 ############################################ BEGIN EDITS ###################################
 
@@ -21,6 +21,7 @@ if [ ! -L "$HOME/Google" ]; then
 fi
 
 GOOGLE=$HOME/Google/$GOOGLE_DIR
+ARCHIVE=${SE}/GoogleTransfer
 
 export IFS='
 '
@@ -31,13 +32,27 @@ else
 	mkdir -p ${TMPDIR}
 fi
 
+if [ ! -d ${ARCHIVE} ]; then
+	mkdir -p ${ARCHIVE}
+fi
+
 touch -t `date +%m%d0000` /tmp/$$
-for x in `find ${SE} -name "*.story" -type f -newer /tmp/$$ `; do
+for x in `find ${SE} -name "*.story" -type f -newer /tmp/$$ |grep -v GoogleTransfer`; do
   file=`echo $x| sed -e "s|${SE}||g" -e "s|/||g"` 
 	newf=`echo $file| sed -e "s/\.story//" -e "s| |_|g"`
-	unzip -p ${SE}/${file} story.xml > ${TMPDIR}/${newf}-story.xml
-	cat ${TMPDIR}/${newf}-story.xml | sed 's|</b>|-|g' | sed 's|<[^>]*>||g'|sed -e "s/  /:/g"  |egrep -v ":{1,}$"|sed -e "s/:/ /g" > $GOOGLE/${newf}-story.txt
+	unzip -c ${SE}/${file} story.xml | sed 's|</b>|-|g' | sed 's|<[^>]*>||g'|sed -e "s/  /:/g"  |egrep -v ":{1,}$"|sed -e "s/:/ /g" > ${TMPDIR}/${newf}-story.txt
+	if [ -f ${ARCHIVE}/${newf}-story.txt ]; then
+		OLDCOUNT=`wc -w ${ARCHIVE}/${newf}-story.txt|sed -e "s|/.*||" -e "s/ //g"`
+	fi
+	NEWCOUNT=`wc -w ${TMPDIR}/${newf}-story.txt|sed -e "s|/.*||" -e "s/ //g"`
+	if [ ${NEWCOUNT} -gt ${OLDCOUNT} ]; then
+		COUNT=$(expr $NEWCOUNT - $OLDCOUNT)
+	else
+		COUNT=${NEWCOUNT}
+	fi
+	echo $COUNT > ${GOOGLE}/${newf}-count.txt
+	mv ${TMPDIR}/${newf}-story.txt ${ARCHIVE}/${newf}-story.txt
 done 
 rm /tmp/$$
 
-/bin/rm ${TMPDIR}/*.xml > /dev/null 2>&1
+/bin/rm ${TMPDIR}/*.txt > /dev/null 2>&1

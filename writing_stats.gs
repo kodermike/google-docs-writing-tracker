@@ -270,30 +270,59 @@ function getDailyWordCount() {
     Logger.log("Checking file: " + files[i].getName() + "...");
     if (today == Utilities.formatDate(files[i].getLastUpdated(), TIME_ZONE, "yyyy-MM-dd")) {
       Logger.log("  -> File was modified today. Getting word count...");
+        filename = files[i].getName();
+        matchstring="count.txt";
       if (MODE == 1) {
-        writingType = getWritingType(files[i].getId());
-        if (writingType == "Fiction") {
-          words_fiction += getFileWordCount(files[i].getId());
-          Logger.log("Counted: " + words_fiction + " fiction words");
+        Logger.log("Checking " + filename + " against " + matchstring);
+        if (filename.match(matchstring)) {
+          //open file, read word count, append it
+          Logger.log("Found a count file");
+          var id = files[i].getId(); ///HERE
+          var doc_text = DriveApp.getFileById(id).getBlob().getDataAsString();
+          doc_text = doc_text.replace(/(^\s*)|(\s*$)/gi,"");
+          doc_text = doc_text.replace(/[ ]{2,}/gi," ");
+          doc_text = doc_text.replace(/\n /,"\n");
+          Logger.log("Adding " + doc_text + " words to word count");
+          words_fiction += +doc_text;
         } else {
-          words_nonfiction += getFileWordCount(files[i].getId());
-          Logger.log("Counted: " + words_nonfiction + " nonfiction words.");
+          writingType = getWritingType(files[i].getId());
+          if (writingType == "Fiction") {
+            words_fiction += getFileWordCount(files[i].getId());
+            Logger.log("Counted: " + words_fiction + " fiction words");
+          } else {
+            words_nonfiction += getFileWordCount(files[i].getId());
+            Logger.log("Counted: " + words_nonfiction + " nonfiction words.");
+          }
+         }
+        } else {
+          if (filename.match(matchstring)) {
+            //open file, read word count, append it
+            Logger.log("Found a count file");
+            var doc = DocumentApp.openById(files[i].getId());
+            var doc_text = doc.getText();
+            Logger.log("Adding " + doc_text + " words to word count");
+            words_fiction += doc_text;
+           } else {
+            words_fiction += getFileWordCount(files[i].getId());
+           }
         }
+      
+      if (filename.match(matchstring)) {
+      // Do nothing. We don't want to backup count files.
       } else {
-        words_fiction += getFileWordCount(files[i].getId());
-      }
+        // grab difference for Evernote
+        local_diff = getFileDiff(files[i].getId());
+        if (local_diff != "") {
+          daily_diff = daily_diff + "<strong><p>" + files[i].getName() + "</strong></p>" + local_diff + "<hr>\n";
+        }
 
-      // grab difference for Evernote
-      local_diff = getFileDiff(files[i].getId());
-      if (local_diff != "") {
-        daily_diff = daily_diff + "<strong><p>" + files[i].getName() + "</strong></p>" + local_diff + "<hr>\n";
+        // backup the current version of the file
+        if (TEST_MODE == 1) {
+          Logger.log("TEST MODE: Original/Old files will be untouched.");
+        } else {
+          backupFile(files[i].getId())
+        }
       }
-
-      // backup the current version of the file
-      if (TEST_MODE == 1)
-        Logger.log("TEST MODE: Original/Old files will be untouched.");
-      else
-        backupFile(files[i].getId())
     }
   }
 
@@ -546,7 +575,6 @@ function getWritingType(id) {
   if (DriveApp.getFileById(id).getMimeType() == MimeType.PLAIN_TEXT) {
     Logger.log("Got an MD file!");
     var doc_text = DriveApp.getFileById(id).getBlob().getDataAsString();
-    Logger.log(doc_text)
   } else {
     var doc = DocumentApp.openById(id);
     var doc_text = doc.getText();
@@ -593,7 +621,6 @@ function getFileWordCount(id) {
     Logger.log("Got a plain text file!");
     var doc1 = DriveApp.getFileById(id).getBlob().getDataAsString();
     var name = DriveApp.getFileById(id).getName();
-    Logger.log(doc1);
   } else {
     var doc = DocumentApp.openById(id);
     var doc1 = doc.getText();
@@ -615,7 +642,6 @@ function getFileWordCount(id) {
         Logger.log("Found file " + name + " in snapshot folder");
         if (DriveApp.getFileById(file.getId()).getMimeType() == MimeType.PLAIN_TEXT) {
           var doc2 = DriveApp.getFileById(file.getId()).getBlob().getDataAsString();
-          var doc2 = DocsList.getFileById(file.getId()).getContentAsString();
         } else {
           var prev_doc = DocumentApp.openById(file.getId());
           var doc2 = prev_doc.getText();
@@ -629,7 +655,6 @@ function getFileWordCount(id) {
       }
     }
   } else {
-    //diff = doc1;
   }
 
   return count;
