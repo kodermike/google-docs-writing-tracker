@@ -456,8 +456,6 @@ function getWritingTime(rt_date) {
     }
   }
   return totalSeconds/60;
-  }
-  return totalSeconds/60;
 }
 
 function backupFile(id) {

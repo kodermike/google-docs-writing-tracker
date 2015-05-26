@@ -1,0 +1,43 @@
+#!/bin/bash -xv
+
+############################################ BEGIN EDITS ###################################
+
+# Set this to the path to your google drive folder that you are tracking
+# CASE IS IMPORTANT. If your directory has a capital letter in the name, reflect it here
+GOOGLE_DIR=Writing
+
+# SET this to the path for where you are dropping your sync's in Storyist.
+SE=$HOME/Path/to/files/from/Storyist
+
+# Set a tmp directory for us to unpack to - this will be deleted on exit
+# DO NOT SET THIS TO /tmp - we aren't smart enough not to delete everything
+TMPDIR=/tmp/storyist
+############################################ END EDITS #####################################
+# You may of course modify after this point - but at your own peril...
+
+# We create the symlink between Google Drive (with spaces) to just Google - saves pain later
+if [ ! -L "$HOME/Google" ]; then
+	ln -s $HOME/Google\ Drive $HOME/Google
+fi
+
+GOOGLE=$HOME/Google/$GOOGLE_DIR
+
+export IFS='
+'
+
+if [ -d ${TMPDIR} ]; then
+	/bin/rm ${TMPDIR}/*.xml > /dev/null 2>&1
+else
+	mkdir -p ${TMPDIR}
+fi
+
+touch -t `date +%m%d0000` /tmp/$$
+for x in `find ${SE} -name "*.story" -type f -newer /tmp/$$ `; do
+  file=`echo $x| sed -e "s|${SE}||g" -e "s|/||g"` 
+	newf=`echo $file| sed -e "s/\.story//" -e "s| |_|g"`
+	unzip -p ${SE}/${file} story.xml > ${TMPDIR}/${newf}-story.xml
+	cat ${TMPDIR}/${newf}-story.xml | sed 's|</b>|-|g' | sed 's|<[^>]*>||g'|sed -e "s/  /:/g"  |egrep -v ":{1,}$"|sed -e "s/:/ /g" > $GOOGLE/${newf}-story.txt
+done 
+rm /tmp/$$
+
+/bin/rm ${TMPDIR}/*.xml > /dev/null 2>&1

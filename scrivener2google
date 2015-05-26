@@ -1,0 +1,36 @@
+#!/bin/bash
+
+############################################ BEGIN EDITS ###################################
+
+# Set this to the path to your google drive folder that you are tracking
+# CASE IS IMPORTANT. If your directory has a capital letter in the name, reflect it here
+GOOGLE_DIR=Writing
+
+# SET this to the path for where you are dropping your sync's in scrivener.
+SE=$HOME/some/export/path
+
+############################################ END EDITS #####################################
+# You may of course modify after this point - but at your own peril...
+
+# We create the symlink between Google Drive (with spaces) to just Google - saves pain later
+if [ ! -L "$HOME/Google" ]; then
+	ln -s $HOME/Google\ Drive $HOME/Google
+fi
+
+GOOGLE=$HOME/Google/$GOOGLE_DIR
+
+export IFS='
+'
+
+
+for x in `ls $SE`; do
+	if [ -d "${SE}/${x}/Draft" ]; then
+		path=`echo ${SE}/${x}|sed -e "s| |\\ |g"`
+		for file in `find ${path} \( -name "*.txt" -o -name "*.md*" \) -type f -mtime -1d -follow`; do
+			if [ `wc -w ${file}|awk '{print $1}'` -gt 2 ]; then
+				newf=`echo $file | sed -e "s|${SE}/${x}/Draft/||g"|sed -e "s| |_|g"|sed -e "s|${SE}/${x}/Notes/||g"`
+				rsync -av $file $GOOGLE/${x}-${newf}
+			fi
+		done
+	fi
+done
